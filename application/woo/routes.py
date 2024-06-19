@@ -1,8 +1,9 @@
-from flask import Flask, render_template, url_for, request, make_response, redirect, Response, Blueprint,send_from_directory
+from flask import Flask, render_template, url_for, request,jsonify, json ,make_response, redirect, Response, Blueprint,send_from_directory
 from woocommerce import API
 import application
 from . import woo
 from ast import dump
+import stripe
 import datetime
 from operator import index
 from socket import IPV6_DONTFRAG
@@ -31,6 +32,7 @@ import xlwt
 import openpyxl
 from datetime import datetime
 from datetime import date
+import iop
 
 @woo.route('/integracion')
 def integra():
@@ -303,6 +305,47 @@ def pedidosWonder():
 
 
 
+@woo.route('/venta', methods = ['GET', 'POST'])
+def venta():
+
+    print('se hizo una venta')
 
 
+
+    return 'venta'
+
+@woo.route('/webhookWoocomerce', methods=['POST', 'GET'])
+def webhookwoocomerce():
+    print('hola')
+
+    return 'hola'
+
+
+@woo.route('/webhook', methods=['POST', 'GET'])
+def webhook():
+    url = 'https://api.miravia.com/v2/product/get'  # URL correcta de la API de Miravia
+    appkey = '507264'
+    appSecret = 'PDVcqLbxuJriMkxltJdHUAGO9M3kgejl'
+    access_token = '50000101238q2nQzgvDkPARRfWeiq7su2ekiyh3FTtojwntRAL10ec1e2c0QJunw'  # Token de acceso válido
+
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+    params = {
+        'product_id': '1357296984086901',
+        'seller_skus': '["TESTING_PRODUCT_DECEMBER_467d4d03-4efc-4d78-9569-78971ab02c18"]',
+        'max_created_at': '1704884033000',
+        'page_size': '10',
+        'page': '1',
+        'extraInfo_filter': '["quality_control_log"]',
+        'status': 'ALL'
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+    response_data = response.json()
+
+    print(response_data)
+    return response_data
+    
 
