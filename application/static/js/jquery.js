@@ -633,7 +633,6 @@ function eliminarCampo() {
   }
 }
   
-
 // FILTROS CARGUE INGRESOS O GESTION INGRESOS
 
 function skuIngreso() {

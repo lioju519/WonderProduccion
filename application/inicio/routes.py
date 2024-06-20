@@ -71,13 +71,10 @@ def add_product():
             peso = 0.0
             print(peso)
 
-  
+
         if(sku_indivisible == sku_padre):
             
             tipo_producto = 'UNITARIO'
-            
-            if(int(cantidad) > int(1)):
-                tipo_producto = 'PACK'
             
             conexion=obtener_conexion()
             with conexion.cursor() as cursor:
