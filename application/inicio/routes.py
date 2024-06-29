@@ -86,34 +86,39 @@ def add_product():
                     flash(f'{sku_indivisible} PRODUCTO EXISTENTE VALIDE SKU EN PRODUCTOS', 'error')
                     
                 else:
-                    with conexion.cursor() as cursor:
-                        cursor.execute('INSERT INTO productos (sku_indivisible,sku_padre,ean,nombre,cantidad,impuesto,fecha_caducidad,descripcion,estado, precio, tipo_producto,localizacion, promocion, sku_transitorio, valoracion, peso, cant_trans) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',(sku_indivisible,sku_padre,ean,nombre,cantidad,impuesto,fecha_caducidad,descripcion,1,precio, tipo_producto,localizacion, promocion, sku_transitorio, valoracion,peso,cant_trans))
-                        conexion.commit()
 
-                    #log producto simple
-                    usuario = session['usuario']
-                    accion = 'Crear producto simple'
-                    fecha_y_hora_actual = datetime.now()
-                    
-                    with conexion.cursor() as cursor:
-                        cursor.execute('INSERT INTO log_usuarios (usuario,accion,sku_afectado,sku_indivisible, tipo_producto, fecha) VALUES (%s,%s,%s,%s,%s,%s)',(usuario,accion,sku_indivisible,sku_padre,tipo_producto,fecha_y_hora_actual))
-                        conexion.commit()
-                    
-                    with conexion.cursor() as cursor:
-                        cursor.execute('SELECT sku_indivisible FROM inventario WHERE sku_indivisible = %s', sku_indivisible)
-                        result_inven = cursor.fetchone()
-                    
-                    if(result_inven):
-                        print('paila')
-                        
-                    else:
+                    if precio:
+
                         with conexion.cursor() as cursor:
-                            cursor.execute('INSERT INTO inventario (sku_indivisible,sku,cantidad,inventario_en_proceso,estado) VALUES (%s,%s,%s,%s,%s)',(sku_indivisible,sku_padre,0,0,0))
+                            cursor.execute('INSERT INTO productos (sku_indivisible,sku_padre,ean,nombre,cantidad,impuesto,fecha_caducidad,descripcion,estado, precio, tipo_producto,localizacion, promocion, sku_transitorio, valoracion, peso, cant_trans) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',(sku_indivisible,sku_padre,ean,nombre,cantidad,impuesto,fecha_caducidad,descripcion,1,precio, tipo_producto,localizacion, promocion, sku_transitorio, valoracion,peso,cant_trans))
                             conexion.commit()
 
-                        session['usuario']
-                    flash(f'EL PRODUCTO {sku_indivisible} fue creado con éxito', 'success')
-            
+                        #log producto simple
+                        usuario = session['usuario']
+                        accion = 'Crear producto simple'
+                        fecha_y_hora_actual = datetime.now()
+                        
+                        with conexion.cursor() as cursor:
+                            cursor.execute('INSERT INTO log_usuarios (usuario,accion,sku_afectado,sku_indivisible, tipo_producto, fecha) VALUES (%s,%s,%s,%s,%s,%s)',(usuario,accion,sku_indivisible,sku_padre,tipo_producto,fecha_y_hora_actual))
+                            conexion.commit()
+                        
+                        with conexion.cursor() as cursor:
+                            cursor.execute('SELECT sku_indivisible FROM inventario WHERE sku_indivisible = %s', sku_indivisible)
+                            result_inven = cursor.fetchone()
+                        
+                        if(result_inven):
+                            print('paila')
+                            
+                        else:
+                            with conexion.cursor() as cursor:
+                                cursor.execute('INSERT INTO inventario (sku_indivisible,sku,cantidad,inventario_en_proceso,estado) VALUES (%s,%s,%s,%s,%s)',(sku_indivisible,sku_padre,0,0,0))
+                                conexion.commit()
+
+                            session['usuario']
+                        flash(f'EL PRODUCTO {sku_indivisible} fue creado con éxito', 'success')
+
+                    else:
+                        flash(f'Debe indicar el precio para un producto UNITARIO', 'error')
             return redirect(url_for('inicio.panel'))
         
         elif(sku_indivisible != sku_padre):

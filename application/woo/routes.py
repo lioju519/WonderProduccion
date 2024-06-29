@@ -41,96 +41,80 @@ def integra():
 
 @woo.route('/woocommerce')
 def sincronizaInventario():
-
     wcapi = API(
-        url = 'https://wondermarket.es',
+        url='https://wondermarket.es',
         consumer_key='ck_b2977f45f71a91bc1a94a1c677fa1cac118a0fbe',
         consumer_secret='cs_a2da1896983bc351e5ff476a316e78407f1b6bef',
         wp_api=True,
         version='wc/v3',
-        query_string_auth=True 
+        query_string_auth=True
     )
     page = 1
     paila = 0
     for i in range(201):
-        
-        data_2 = wcapi.get("products", params={"per_page": 10,'page': page}).json()
-        #print(data_2)
+        data_2 = wcapi.get("products", params={"per_page": 10, 'page': page}).json()
         page += 1
         for x in data_2:
-            sku = x['sku']
-            id = x['id']
-            price = x['price']
-            stock_quantity = x['stock_quantity']
-            #print(sku, stock_quantity)
-            conexion=obtener_conexion()
+            sku = x.get('sku')
+            id = x.get('id')
+            price = x.get('price')
+            stock_quantity = x.get('stock_quantity')
+            print(sku, stock_quantity)
+            conexion = obtener_conexion()
             with conexion.cursor() as cursor:
-                cursor.execute("SELECT sku_indivisible, sku_padre, cantidad, tipo_producto FROM productos WHERE sku_padre =  %s", sku)
+                cursor.execute("SELECT sku_indivisible, sku_padre, cantidad, tipo_producto FROM productos WHERE sku_padre = %s", sku)
                 result_set = cursor.fetchone()
-                
-                if(result_set):
-                    #print(sku)
+
+                if result_set is not None:
+                    print(sku)
                     sku_indivisible = result_set[0]
-                    print(sku_indivisible)
+                    print(sku_indivisible, 'ojo')
                     sku_padre = result_set[1]
                     relacion = int(result_set[2])
                     tipo_producto = result_set[3]
-                    
-                    if(relacion == 1):
 
-                        conexion=obtener_conexion()
+                    if relacion == 1:
+                        conexion = obtener_conexion()
                         with conexion.cursor() as cursor:
-                            cursor.execute("SELECT cantidad  FROM inventario WHERE sku_indivisible =  %s", sku_indivisible)
+                            cursor.execute("SELECT cantidad FROM inventario WHERE sku_indivisible = %s", sku_indivisible)
                             result_set_2 = cursor.fetchone()
-                            qty_bd = int(result_set_2[0])
-                            
+
                             if result_set_2 is not None and len(result_set_2) > 0:
                                 qty_bd = int(result_set_2[0])
                                 print("Quantity:", qty_bd)
 
                                 data = {
-                                "stock_quantity": qty_bd
+                                    "stock_quantity": qty_bd
                                 }
                                 wcapi.put('products/' + str(id), data).json()
                             else:
                                 print("No results found or result_set_2 is None", sku, sku_indivisible)
 
-                            #print(sku_indivisible, sku_padre, relacion , qty_bd)
-
-                            
-
-                        ##### actualiza can del inventario
-                    elif(relacion > 1):
-                        
-                        conexion=obtener_conexion()
+                    elif relacion > 1:
+                        conexion = obtener_conexion()
                         with conexion.cursor() as cursor:
-                            cursor.execute("SELECT cantidad  FROM inventario WHERE sku_indivisible =  %s", sku_indivisible)
+                            cursor.execute("SELECT cantidad FROM inventario WHERE sku_indivisible = %s", sku_indivisible)
                             result_set_2 = cursor.fetchone()
 
                             if result_set_2 is not None and len(result_set_2) > 0:
                                 qty_bd = int(result_set_2[0])
-                                print("Quantity:", qty_bd)
-                                qty_bd = int(result_set_2[0])
-
+                                print("Quantity:", qty_bd, 'ojo 2')
                                 qty_final = qty_bd / relacion
-                                
+
                                 data = {
                                     "stock_quantity": int(qty_final)
                                 }
                                 wcapi.put('products/' + str(id), data).json()
-
-                                #print(sku_indivisible, sku_padre,relacion , qty_bd , int(qty_final), id)
-
-                                #print(sku_indivisible, sku_padre, relacion, tipo_producto)
                             else:
-                                print("No results found or result_set_2 is None",sku, sku_indivisible)
-                            
-                               
+                                print("No results found or result_set_2 is None", sku, sku_indivisible)
                     else:
                         paila += 1
-                        #print(paila)
-                    #print(sku, stock_quantity)
-    
+                        # print(paila)
+                else:
+                    print("No results found for SKU:", sku)
+                    paila += 1
+                    # print(paila)
+
     return render_template('tienda.html')
 
 @woo.route('/orders')
@@ -304,19 +288,123 @@ def pedidosWonder():
     return render_template('tienda.html')
 
 
-
-@woo.route('/venta', methods = ['GET', 'POST'])
-def venta():
-
-    print('se hizo una venta')
-
-
-
-    return 'venta'
-
-@woo.route('/webhookWoocomerce', methods=['POST', 'GET'])
+@woo.route('/webhookWoocomerce', methods=['POST'])
 def webhookwoocomerce():
-    print('hola')
+    payload = request.get_data(as_text=True)
+    sig_header = request.headers.get('Stripe-Signature')
+    endpoint_secret = 'whsec_bu0NcYOlP8fmbGbZWLTlspEXhRYFNV2J'
+    stripe.api_key = 'sk_test_51PL2G3CWnWzvwqocDGuasxLSJTsSHkHr6bmqpgb5pT63viwNqeO58wZxd2Hkh6Pf47gunrlSfeolSuC9WLofBvo200dEDJ8a3g'
+    
+
+    #print("Payload received:", payload)
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+        print("Event constructed successfully")
+    except ValueError as e:
+        # Invalid payload
+        print(f"⚠️  Invalid payload: {e}")
+        return jsonify(success=False), 400
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        print(f"⚠️  Invalid signature: {e}")
+        return jsonify(success=False), 400
+
+    # Manejar el evento según su tipo
+    if event['type'] == 'charge.succeeded':
+        handle_charge_succeeded(event)
+    elif event['type'] == 'payment_intent.succeeded':
+        handle_payment_intent_succeeded(event)
+    else:
+        print(f"⚠️  Unexpected event type: {event['type']}")
+        return jsonify(success=False), 400
+
+    return jsonify(success=True)
+
+def handle_charge_succeeded(event):
+    charge = event['data']['object']
+    payment_intent_id = charge['payment_intent']
+    order_id = get_order_id_from_metadata(charge)
+
+    print("Charge succeeded. Payment Intent ID:", payment_intent_id)
+    print("Order ID:", order_id, 'od ojo')
+
+    # Aquí podrías llamar a una función para obtener los artículos del pedido
+    if order_id:
+        retrieve_order_items(order_id)
+    else:
+        print("No order ID found in charge metadata.")
+
+def handle_payment_intent_succeeded(event):
+    intent = event['data']['object']
+    order_id = intent['metadata'].get('order_id')
+    customer_email = intent['receipt_email']
+    payment_intent_id = intent['id']
+
+    print("Customer Email:", customer_email)
+    print("Payment Intent ID:", payment_intent_id)
+    print("Order ID:", order_id)
+
+    # Aquí podrías llamar a una función para obtener los artículos del pedido
+    if order_id:
+        retrieve_order_items(order_id)
+       
+    else:
+        print("No order ID found in payment intent metadata.")
+
+def get_order_id_from_metadata(charge):
+    # Función para extraer el número de pedido (order_id) de los metadatos del charge
+    return charge['metadata'].get('order_id')
+
+@woo.route('/obtenerPedido')
+def retrieve_order_items(order_id):
+    
+    
+
+    wcapi = API(
+        url='https://mirumme.es',
+        consumer_key='ck_b172a257cb3e4139edf5a39813308a4aca3e35bf',
+        consumer_secret='cs_978e384838225030c95bb052e202cdd7e4f5a6bf',
+        wp_api=True,
+        version='wc/v3',
+        query_string_auth=True
+    )
+    
+    order = wcapi.get(f"orders/{order_id}").json()
+    
+    for item in order['line_items']:
+                
+        customer_name_facturacion = order['billing']['first_name'] + ' ' + order['billing']['last_name']
+        customer_name_envio = order['shipping']['first_name'] + ' ' + order['shipping']['last_name']
+        nombre_envio = order['shipping']['first_name']
+        nombre_facturacion = order['billing']['first_name']
+        apellidos_envio = order['billing']['last_name']
+        apellidos_facturacion = order['shipping']['last_name']
+        empresa = order['billing']['company']
+        direccion_facturacion = order['shipping']['address_1'] + ' ' + order['shipping']['address_2']
+        direccion_envio = order['billing']['address_1'] + ' ' +order['billing']['address_2']
+        ciudad_facturacion = order['billing']['city']
+        ciudad_envio = order['shipping']['city']
+        codigo_provincia_envio = order['shipping']['state']
+        codigo_provincia_facturacion = order['billing']['state']
+        codigo_postal_envio = order['shipping']['postcode']
+        codigo_postal_facturacion = order['billing']['postcode']
+        codigo_pais_envio = order['shipping']['country']
+        codigo_pais_facturacion = order['billing']['country']
+        correo_electronico = order['billing']['email']
+        telefono = order['billing']['phone']
+        sku = item['sku']
+        quantity_sold = item['quantity']
+        product_name = item['name']
+        price = item['price']
+        titulo_metodo_pago = order['payment_method_title']
+        subtotal = order['subtotal'] if 'subtotal' in order else 0
+        
+        nota_cliente = order['customer_note']
+
+        print(sku, quantity_sold, 'la re buena')
 
     return 'hola'
 
